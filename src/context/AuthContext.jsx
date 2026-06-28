@@ -104,6 +104,21 @@ export const AuthProvider = ({ children }) => {
     };
   }, [authUser]);
 
+  const updateAuthUser = (updatedFields) => {
+    setAuthUser((prev) => (prev ? { ...prev, ...updatedFields } : null));
+  };
+
+  const updateProfile = async (data) => {
+    try {
+      const res = await axiosInstance.put("/auth/update-profile", data);
+      setAuthUser(res.data);
+      return { success: true, user: res.data };
+    } catch (error) {
+      const message = error.response?.data?.message || "Cập nhật hồ sơ thất bại";
+      return { success: false, message };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -116,6 +131,8 @@ export const AuthProvider = ({ children }) => {
         signup,
         login,
         logout,
+        updateAuthUser,
+        updateProfile,
       }}
     >
       {children}

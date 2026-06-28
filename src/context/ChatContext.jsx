@@ -69,6 +69,47 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
+  const togglePinMessage = async (messageId) => {
+    try {
+      const res = await axiosInstance.put(`/messages/pin/${messageId}`);
+      setMessages((prevMessages) =>
+        prevMessages.map((m) => (m._id === messageId ? { ...m, isPinned: res.data.isPinned } : m))
+      );
+      return { success: true };
+    } catch (error) {
+      console.log("Error in togglePinMessage:", error.message);
+      return { success: false };
+    }
+  };
+
+  const editMessage = async (messageId, text) => {
+    try {
+      const res = await axiosInstance.put(`/messages/edit/${messageId}`, { text });
+      setMessages((prevMessages) =>
+        prevMessages.map((m) => (m._id === messageId ? res.data : m))
+      );
+      return { success: true };
+    } catch (error) {
+      console.log("Error in editMessage:", error.message);
+      return { success: false, message: error.response?.data?.message || "Lỗi khi chỉnh sửa tin nhắn" };
+    }
+  };
+
+  const recallMessage = async (messageId) => {
+    try {
+      await axiosInstance.put(`/messages/recall/${messageId}`);
+      setMessages((prevMessages) =>
+        prevMessages.map((m) =>
+          m._id === messageId ? { ...m, text: "", image: "", isRecalled: true, isPinned: false } : m
+        )
+      );
+      return { success: true };
+    } catch (error) {
+      console.log("Error in recallMessage:", error.message);
+      return { success: false, message: error.response?.data?.message || "Lỗi khi thu hồi tin nhắn" };
+    }
+  };
+
   // Lắng nghe tin nhắn mới thông qua Socket.io
   useEffect(() => {
     if (!socket) return;
@@ -78,13 +119,58 @@ export const ChatProvider = ({ children }) => {
       if (selectedUser && newMessage.sender === selectedUser._id) {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
       }
-      playNotificationSound();
+      
+      // Chỉ phát âm thanh khi người dùng này không bị tắt thông báo
+      const mutedUsers = JSON.parse(localStorage.getItem("mutedUsers") || "[]");
+      if (!mutedUsers.includes(newMessage.sender)) {
+        playNotificationSound();
+      }
+    });
+
+    socket.on("messagePinned", ({ messageId, isPinned }) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((m) => (m._id === messageId ? { ...m, isPinned } : m))
+      );
+    });
+
+    socket.on("messageEdited", (updatedMessage) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((m) => (m._id === updatedMessage._id ? updatedMessage : m))
+      );
+    });
+
+    socket.on("messageRecalled", ({ messageId }) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((m) =>
+          m._id === messageId ? { ...m, text: "", image: "", isRecalled: true, isPinned: false } : m
+        )
+      );
     });
 
     return () => {
       socket.off("newMessage");
+      socket.off("messagePinned");
+      socket.off("messageEdited");
+      socket.off("messageRecalled");
     };
   }, [socket, selectedUser]);
+
+  const [chatThemes, setChatThemes] = useState({});
+
+  useEffect(() => {
+    try {
+      const savedThemes = JSON.parse(localStorage.getItem("chat-themes") || "{}");
+      setChatThemes(savedThemes);
+    } catch (e) {
+      console.log("Error loading chat themes:", e);
+    }
+  }, []);
+
+  const changeChatTheme = (userId, theme) => {
+    const updated = { ...chatThemes, [userId]: theme };
+    setChatThemes(updated);
+    localStorage.setItem("chat-themes", JSON.stringify(updated));
+  };
 
   return (
     <ChatContext.Provider
@@ -97,7 +183,12 @@ export const ChatProvider = ({ children }) => {
         getUsers,
         getMessages,
         sendMessage,
+        togglePinMessage,
+        editMessage,
+        recallMessage,
         setSelectedUser,
+        chatThemes,
+        changeChatTheme,
       }}
     >
       {children}
