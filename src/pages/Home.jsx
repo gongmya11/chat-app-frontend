@@ -7,7 +7,7 @@ import DetailsSidebar from "../components/DetailsSidebar";
 
 const Home = () => {
   const { selectedUser, chatThemes } = useChat();
-  const [showRightSidebar, setShowRightSidebar] = useState(true);
+  const [showRightSidebar, setShowRightSidebar] = useState(typeof window !== "undefined" ? window.innerWidth > 768 : true);
   const [showChatSearch, setShowChatSearch] = useState(false);
   const [chatSearchQuery, setChatSearchQuery] = useState("");
 
@@ -15,6 +15,10 @@ const Home = () => {
   useEffect(() => {
     setShowChatSearch(false);
     setChatSearchQuery("");
+    // Mặc định ẩn sidebar thông tin trên mobile để không che màn hình chat
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      setShowRightSidebar(false);
+    }
   }, [selectedUser?._id]);
 
   return (
@@ -35,6 +39,7 @@ const Home = () => {
               user={selectedUser} 
               showChatSearch={showChatSearch}
               setShowChatSearch={setShowChatSearch}
+              setShowRightSidebar={setShowRightSidebar}
             />
           )}
         </div>

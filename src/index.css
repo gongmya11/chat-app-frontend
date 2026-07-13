@@ -3465,6 +3465,29 @@ input:checked + .toggle-switch-slider:before {
     }
   }
 
+  .details-close-btn {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important;
+    background: var(--bg-hover) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    cursor: pointer !important;
+    padding: 6px !important;
+    border-radius: 50% !important;
+    z-index: 1001 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    transition: var(--transition-smooth) !important;
+  }
+
+  .details-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    transform: scale(1.05);
+  }
+
   /* Modal Dialog containers on Mobile (Search friends, profile config) */
   .profile-card-container {
     width: 90% !important;

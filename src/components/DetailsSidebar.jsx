@@ -1,11 +1,11 @@
-import { Bell, BellOff, Search, ShieldAlert, Image, FileText, Pin, PinOff } from "lucide-react";
+import { Bell, BellOff, Search, ShieldAlert, Image, FileText, Pin, PinOff, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useChat } from "../context/ChatContext";
 import { useState, useEffect } from "react";
 import ProfileModal from "./ProfileModal";
 
 
-const DetailsSidebar = ({ user, showChatSearch, setShowChatSearch }) => {
+const DetailsSidebar = ({ user, showChatSearch, setShowChatSearch, setShowRightSidebar }) => {
   const { onlineUsers } = useAuth();
   const { messages, togglePinMessage } = useChat();
   const isOnline = onlineUsers.includes(user._id);
@@ -39,6 +39,15 @@ const DetailsSidebar = ({ user, showChatSearch, setShowChatSearch }) => {
 
   return (
     <div className="details-sidebar">
+      {/* Nút đóng dành cho thiết bị di động */}
+      <button 
+        className="details-close-btn mobile-only" 
+        onClick={() => setShowRightSidebar(false)}
+        title="Đóng chi tiết"
+      >
+        <X size={18} />
+      </button>
+
       <div className="details-avatar-wrapper" onClick={() => setShowProfileModal(true)} style={{ cursor: "pointer" }} title="Xem thông tin chi tiết">
         <img
           src={user.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=" + user.username}
