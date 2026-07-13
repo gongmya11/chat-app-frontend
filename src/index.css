@@ -143,6 +143,8 @@ body::after {
   width: 100%;
   padding: 0;
   z-index: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-app-window {
@@ -3500,6 +3502,7 @@ input:checked + .toggle-switch-slider:before {
     width: 90% !important;
     max-width: 380px !important;
     padding: 24px !important;
+    margin: 32px auto !important;
   }
 
   .notification-dropdown {
