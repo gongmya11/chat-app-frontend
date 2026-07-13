@@ -3387,7 +3387,142 @@ input:checked + .toggle-switch-slider:before {
   opacity: 0.75;
 }
 
-/* deploy trigger */
+/* RESPONSIVE LAYOUTS FOR MOBILE DEVICES */
+
+/* Default desktop: Hide mobile back button */
+.mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  /* Toggle showing mobile elements */
+  .mobile-only {
+    display: flex !important;
+  }
+
+  /* Main Layout Control for Mobile Viewports */
+  .chat-app-window {
+    flex-direction: row;
+    height: 100% !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  /* Switch layouts based on whether a user is selected */
+  .no-selected-user .sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    display: flex !important;
+  }
+
+  .no-selected-user .chat-active-area,
+  .no-selected-user .no-chat-container {
+    display: none !important;
+  }
+
+  .has-selected-user .sidebar {
+    display: none !important;
+  }
+
+  .has-selected-user .chat-active-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    display: flex !important;
+    height: 100% !important;
+  }
+
+  /* Details Panel on Mobile (Slide-over overlay from the right) */
+  .has-selected-user .details-sidebar {
+    position: fixed !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 290px !important;
+    max-width: 80% !important;
+    height: 100% !important;
+    z-index: 999 !important;
+    background: var(--bg-surface) !important;
+    backdrop-filter: blur(25px) !important;
+    -webkit-backdrop-filter: blur(25px) !important;
+    box-shadow: -8px 0 25px rgba(0, 0, 0, 0.25) !important;
+    border-left: 1px solid var(--border-color);
+    animation: slideInRightMobile 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes slideInRightMobile {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  /* Modal Dialog containers on Mobile (Search friends, profile config) */
+  .profile-card-container {
+    width: 90% !important;
+    max-width: 90% !important;
+    padding: 16px !important;
+    margin: auto !important;
+  }
+
+  .auth-container {
+    width: 90% !important;
+    max-width: 380px !important;
+    padding: 24px !important;
+  }
+
+  .notification-dropdown {
+    width: 92% !important;
+    max-width: 340px !important;
+    right: 4% !important;
+    top: 64px !important;
+  }
+
+  /* Chat feed bubble adjustments for smaller screens */
+  .chat-feed {
+    padding: 12px 14px !important;
+  }
+
+  .message-bubble {
+    max-width: 85% !important;
+  }
+
+  .message-text {
+    font-size: 0.9rem !important;
+  }
+
+  /* Chat Compose Box input adjustments */
+  .chat-compose {
+    padding: 8px 12px !important;
+  }
+
+  .chat-input {
+    font-size: 0.9rem !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Sidebar Profile Header adjustments */
+  .sidebar-header {
+    padding: 12px 14px !important;
+  }
+
+  /* Header icon sizes and gaps */
+  .header-actions {
+    gap: 6px !important;
+  }
+
+  .header-icon-btn {
+    padding: 6px !important;
+  }
+}
 
 
 

@@ -18,7 +18,6 @@ const ChatHeader = ({ showRightSidebar, setShowRightSidebar }) => {
         <button 
           className="header-icon-btn mobile-only" 
           onClick={() => setSelectedUser(null)}
-          style={{ display: "none" }} // Class mobile-only sẽ được kích hoạt ở css responsive nếu cần, ở đây tạm để inline ẩn trên desktop
         >
           <ChevronLeft size={20} />
         </button>

@@ -18,7 +18,7 @@ const Home = () => {
   }, [selectedUser?._id]);
 
   return (
-    <div className="chat-app-window">
+    <div className={`chat-app-window ${selectedUser ? "has-selected-user" : "no-selected-user"}`}>
       <Sidebar />
       {selectedUser ? (
         <div className="chat-active-area">
