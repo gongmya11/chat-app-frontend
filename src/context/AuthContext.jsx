@@ -6,6 +6,9 @@ const AuthContext = createContext();
 
 const getBackendBaseUrl = () => {
   if (import.meta.env.VITE_BACKEND_BASE_URL) return import.meta.env.VITE_BACKEND_BASE_URL;
+  if (import.meta.env.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL.replace(/\/api$/, "");
+  }
   const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
   return `http://${hostname}:5000`;
 };
