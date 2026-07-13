@@ -10,3 +10,17 @@ export const axiosInstance = axios.create({
   baseURL: getBaseUrl(),
   withCredentials: true, // Tự động gửi kèm cookies (JWT) khi gọi API
 });
+
+// Thêm interceptor để tự động chèn token từ localStorage vào Authorization header (cho môi trường chéo tên miền)
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("chat-app-token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);

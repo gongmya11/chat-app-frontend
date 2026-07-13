@@ -37,6 +37,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await axiosInstance.post("/auth/signup", data);
       setAuthUser(res.data);
+      if (res.data.token) {
+        localStorage.setItem("chat-app-token", res.data.token);
+      }
       return { success: true };
     } catch (error) {
       const message = error.response?.data?.message || "Đăng ký thất bại";
@@ -51,6 +54,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await axiosInstance.post("/auth/login", data);
       setAuthUser(res.data);
+      if (res.data.token) {
+        localStorage.setItem("chat-app-token", res.data.token);
+      }
       return { success: true };
     } catch (error) {
       const message = error.response?.data?.message || "Đăng nhập thất bại";
@@ -64,6 +70,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await axiosInstance.post("/auth/logout");
       setAuthUser(null);
+      localStorage.removeItem("chat-app-token");
       if (socket) {
         socket.disconnect();
         setSocket(null);
