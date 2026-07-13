@@ -175,6 +175,11 @@ body::after {
   animation: fadeIn 0.4s ease-out;
 }
 
+/* Hide placeholder social login buttons to reduce card height on small screens */
+.auth-social-section {
+  display: none !important;
+}
+
 .auth-header {
   text-align: center;
   margin-bottom: 28px;
