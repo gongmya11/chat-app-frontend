@@ -5,13 +5,22 @@ import { useChat } from "../context/ChatContext";
 
 const ProfileModal = ({ isOpen, onClose, userId }) => {
   const { authUser, updateProfile } = useAuth();
-  const { users, setSelectedUser } = useChat();
+  const {
+    users,
+    setSelectedUser,
+    getUserProfile,
+    sendFriendRequest,
+    acceptFriendRequest,
+    declineFriendRequest,
+    unfriend
+  } = useChat();
 
   // Determine if it's our own profile or another user's profile
   const isOwnProfile = !userId || userId === authUser?._id;
   
   // Find the target user details
   const [user, setUser] = useState(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   // Editing states
   const [isEditing, setIsEditing] = useState(false);
@@ -34,17 +43,76 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
   useEffect(() => {
     if (!isOpen) return;
     
-    // Set active user details
-    if (isOwnProfile) {
-      setUser(authUser);
-    } else {
-      const foundUser = users.find((u) => u._id === userId);
-      setUser(foundUser);
-    }
+    const loadProfile = async () => {
+      setIsEditing(false);
+      setErrorMsg("");
+      
+      if (isOwnProfile) {
+        setUser(authUser);
+      } else {
+        setIsLoadingProfile(true);
+        const fetchedUser = await getUserProfile(userId);
+        if (fetchedUser) {
+          setUser(fetchedUser);
+        } else {
+          const foundUser = users.find((u) => u._id === userId);
+          setUser(foundUser ? { ...foundUser, friendshipStatus: "none" } : null);
+        }
+        setIsLoadingProfile(false);
+      }
+    };
     
-    setIsEditing(false);
-    setErrorMsg("");
-  }, [isOpen, userId, authUser, users, isOwnProfile]);
+    loadProfile();
+  }, [isOpen, userId, authUser, isOwnProfile]);
+
+  const handleAddFriend = async () => {
+    setIsSaving(true);
+    const res = await sendFriendRequest(user._id);
+    if (res.success) {
+      const updated = await getUserProfile(user._id);
+      if (updated) setUser(updated);
+    } else {
+      setErrorMsg(res.message);
+    }
+    setIsSaving(false);
+  };
+
+  const handleAcceptFriend = async () => {
+    setIsSaving(true);
+    const res = await acceptFriendRequest(user._id);
+    if (res.success) {
+      const updated = await getUserProfile(user._id);
+      if (updated) setUser(updated);
+    } else {
+      setErrorMsg(res.message);
+    }
+    setIsSaving(false);
+  };
+
+  const handleDeclineFriend = async () => {
+    setIsSaving(true);
+    const res = await declineFriendRequest(user._id);
+    if (res.success) {
+      const updated = await getUserProfile(user._id);
+      if (updated) setUser(updated);
+    } else {
+      setErrorMsg(res.message);
+    }
+    setIsSaving(false);
+  };
+
+  const handleUnfriend = async () => {
+    if (!window.confirm(`Bạn có chắc chắn muốn hủy kết bạn với ${user.username}?`)) return;
+    setIsSaving(true);
+    const res = await unfriend(user._id);
+    if (res.success) {
+      const updated = await getUserProfile(user._id);
+      if (updated) setUser(updated);
+    } else {
+      setErrorMsg(res.message);
+    }
+    setIsSaving(false);
+  };
 
   useEffect(() => {
     if (user) {
@@ -181,7 +249,7 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
                   color: "white",
                   cursor: "pointer",
                   backdropFilter: "blur(4px)",
-                  zIndex: 2,
+                  zIndex: 10,
                 }}
                 title="Thay đổi ảnh bìa"
               >
@@ -284,14 +352,84 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
 
           {/* Action Button: Nhắn tin hoặc Sửa thông tin */}
           <div style={{ marginBottom: "20px" }}>
-            {!isOwnProfile ? (
-              <button 
-                onClick={handleMessageClick}
-                className="profile-btn-primary"
-              >
-                <MessageSquare size={16} />
-                Nhắn tin
-              </button>
+            {isLoadingProfile ? (
+              <div style={{ display: "flex", justifyContent: "center", padding: "10px" }}>
+                <Loader size={20} className="spinner" />
+              </div>
+            ) : !isOwnProfile ? (
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                {user.friendshipStatus === "friends" && (
+                  <>
+                    <button 
+                      onClick={handleMessageClick}
+                      className="profile-btn-primary"
+                      style={{ flex: 1 }}
+                    >
+                      <MessageSquare size={16} />
+                      Nhắn tin
+                    </button>
+                    <button 
+                      onClick={handleUnfriend}
+                      disabled={isSaving}
+                      className="profile-btn-secondary"
+                      style={{ flex: 1, borderColor: "#e74c3c", color: "#e74c3c" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(231, 76, 60, 0.1)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "none";
+                      }}
+                    >
+                      Hủy kết bạn
+                    </button>
+                  </>
+                )}
+
+                {user.friendshipStatus === "none" && (
+                  <button 
+                    onClick={handleAddFriend}
+                    disabled={isSaving}
+                    className="profile-btn-primary"
+                    style={{ flex: 1 }}
+                  >
+                    {isSaving ? <Loader size={16} className="spinner" /> : null}
+                    Kết bạn
+                  </button>
+                )}
+
+                {user.friendshipStatus === "sent_pending" && (
+                  <button 
+                    disabled={true}
+                    className="profile-btn-secondary"
+                    style={{ flex: 1, cursor: "not-allowed", opacity: 0.7 }}
+                  >
+                    Đã gửi yêu cầu kết bạn
+                  </button>
+                )}
+
+                {user.friendshipStatus === "received_pending" && (
+                  <>
+                    <button 
+                      onClick={handleAcceptFriend}
+                      disabled={isSaving}
+                      className="profile-btn-primary"
+                      style={{ flex: 1 }}
+                    >
+                      {isSaving ? <Loader size={16} className="spinner" /> : null}
+                      Chấp nhận
+                    </button>
+                    <button 
+                      onClick={handleDeclineFriend}
+                      disabled={isSaving}
+                      className="profile-btn-secondary"
+                      style={{ flex: 1 }}
+                    >
+                      {isSaving ? <Loader size={16} className="spinner" /> : null}
+                      Từ chối
+                    </button>
+                  </>
+                )}
+              </div>
             ) : isEditing ? (
               <div style={{ display: "flex", gap: "10px" }}>
                 <button 

@@ -10,6 +10,8 @@ export const ChatProvider = ({ children }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isUsersLoading, setIsUsersLoading] = useState(false);
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   const { socket } = useAuth();
 
@@ -46,11 +48,25 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
+  const markAsRead = async (userId) => {
+    try {
+      await axiosInstance.put(`/messages/read/${userId}`);
+      setUsers((prevUsers) =>
+        prevUsers.map((u) =>
+          u._id === userId ? { ...u, unreadCount: 0 } : u
+        )
+      );
+    } catch (error) {
+      console.log("Error in markAsRead:", error.message);
+    }
+  };
+
   const getMessages = async (userId) => {
     setIsMessagesLoading(true);
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
       setMessages(res.data);
+      await markAsRead(userId);
     } catch (error) {
       console.log("Error in getMessages:", error.message);
     } finally {
@@ -62,6 +78,13 @@ export const ChatProvider = ({ children }) => {
     try {
       const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
       setMessages((prevMessages) => [...prevMessages, res.data]);
+      
+      setUsers((prevUsers) =>
+        prevUsers.map((u) =>
+          u._id === selectedUser._id ? { ...u, lastMessage: res.data } : u
+        )
+      );
+
       return { success: true };
     } catch (error) {
       console.log("Error in sendMessage:", error.message);
@@ -110,7 +133,7 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  // Lắng nghe tin nhắn mới thông qua Socket.io
+  // Lắng nghe tin nhắn và thông báo thông qua Socket.io
   useEffect(() => {
     if (!socket) return;
 
@@ -118,6 +141,22 @@ export const ChatProvider = ({ children }) => {
       // Chỉ tự động thêm tin nhắn vào feed nếu tin nhắn đến từ người dùng đang được chọn để chat cùng
       if (selectedUser && newMessage.sender === selectedUser._id) {
         setMessages((prevMessages) => [...prevMessages, newMessage]);
+        markAsRead(selectedUser._id);
+      } else {
+        // Tăng unreadCount và cập nhật lastMessage cục bộ cho người gửi trong sidebar
+        setUsers((prevUsers) =>
+          prevUsers.map((u) => {
+            if (u._id === newMessage.sender) {
+              const currentUnread = u.unreadCount || 0;
+              return {
+                ...u,
+                unreadCount: currentUnread + 1,
+                lastMessage: newMessage,
+              };
+            }
+            return u;
+          })
+        );
       }
       
       // Chỉ phát âm thanh khi người dùng này không bị tắt thông báo
@@ -137,6 +176,15 @@ export const ChatProvider = ({ children }) => {
       setMessages((prevMessages) =>
         prevMessages.map((m) => (m._id === updatedMessage._id ? updatedMessage : m))
       );
+      // Cập nhật preview tin nhắn cuối cùng nếu tin nhắn đó bị sửa
+      setUsers((prevUsers) =>
+        prevUsers.map((u) => {
+          if (u.lastMessage && u.lastMessage._id === updatedMessage._id) {
+            return { ...u, lastMessage: updatedMessage };
+          }
+          return u;
+        })
+      );
     });
 
     socket.on("messageRecalled", ({ messageId }) => {
@@ -145,6 +193,28 @@ export const ChatProvider = ({ children }) => {
           m._id === messageId ? { ...m, text: "", image: "", isRecalled: true, isPinned: false } : m
         )
       );
+      // Cập nhật preview tin nhắn cuối cùng nếu tin nhắn đó bị thu hồi
+      setUsers((prevUsers) =>
+        prevUsers.map((u) => {
+          if (u.lastMessage && u.lastMessage._id === messageId) {
+            return {
+              ...u,
+              lastMessage: { ...u.lastMessage, text: "", image: "", isRecalled: true },
+            };
+          }
+          return u;
+        })
+      );
+    });
+
+    socket.on("new_notification", (notification) => {
+      setNotifications((prev) => [notification, ...prev]);
+      setUnreadNotificationsCount((prev) => prev + 1);
+      playNotificationSound();
+    });
+
+    socket.on("friend_updated", () => {
+      getUsers();
     });
 
     return () => {
@@ -152,6 +222,8 @@ export const ChatProvider = ({ children }) => {
       socket.off("messagePinned");
       socket.off("messageEdited");
       socket.off("messageRecalled");
+      socket.off("new_notification");
+      socket.off("friend_updated");
     };
   }, [socket, selectedUser]);
 
@@ -172,6 +244,125 @@ export const ChatProvider = ({ children }) => {
     localStorage.setItem("chat-themes", JSON.stringify(updated));
   };
 
+  const getNotifications = async () => {
+    try {
+      const res = await axiosInstance.get("/notifications");
+      setNotifications(res.data);
+      setUnreadNotificationsCount(res.data.filter((n) => !n.isRead).length);
+    } catch (error) {
+      console.log("Error in getNotifications:", error.message);
+    }
+  };
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      await axiosInstance.put(`/notifications/read/${id}`);
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      );
+      setUnreadNotificationsCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.log("Error in markNotificationAsRead:", error.message);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await axiosInstance.put("/notifications/read-all");
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadNotificationsCount(0);
+    } catch (error) {
+      console.log("Error in markAllNotificationsAsRead:", error.message);
+    }
+  };
+
+  const clearNotifications = async () => {
+    try {
+      await axiosInstance.delete("/notifications/clear");
+      setNotifications([]);
+      setUnreadNotificationsCount(0);
+    } catch (error) {
+      console.log("Error in clearNotifications:", error.message);
+    }
+  };
+
+  const searchFriends = async (query) => {
+    try {
+      const res = await axiosInstance.get(`/friends/search?query=${encodeURIComponent(query)}`);
+      return res.data;
+    } catch (error) {
+      console.log("Error in searchFriends:", error.message);
+      return [];
+    }
+  };
+
+  const sendFriendRequest = async (userId) => {
+    try {
+      const res = await axiosInstance.post(`/friends/request/${userId}`);
+      return { success: true, message: res.data.message };
+    } catch (error) {
+      console.log("Error in sendFriendRequest:", error.message);
+      return { success: false, message: error.response?.data?.message || "Không thể gửi yêu cầu kết bạn" };
+    }
+  };
+
+  const acceptFriendRequest = async (userId) => {
+    try {
+      const res = await axiosInstance.post(`/friends/accept/${userId}`);
+      getUsers();
+      getNotifications();
+      return { success: true, message: res.data.message };
+    } catch (error) {
+      console.log("Error in acceptFriendRequest:", error.message);
+      return { success: false, message: error.response?.data?.message || "Không thể chấp nhận yêu cầu" };
+    }
+  };
+
+  const declineFriendRequest = async (userId) => {
+    try {
+      const res = await axiosInstance.post(`/friends/decline/${userId}`);
+      getNotifications();
+      return { success: true, message: res.data.message };
+    } catch (error) {
+      console.log("Error in declineFriendRequest:", error.message);
+      return { success: false, message: error.response?.data?.message || "Không thể từ chối yêu cầu" };
+    }
+  };
+
+  const unfriend = async (userId) => {
+    try {
+      const res = await axiosInstance.post(`/friends/unfriend/${userId}`);
+      getUsers();
+      if (selectedUser && selectedUser._id === userId) {
+        setSelectedUser(null);
+      }
+      return { success: true, message: res.data.message };
+    } catch (error) {
+      console.log("Error in unfriend:", error.message);
+      return { success: false, message: error.response?.data?.message || "Không thể hủy kết bạn" };
+    }
+  };
+
+  const getUserProfile = async (userId) => {
+    try {
+      const res = await axiosInstance.get(`/friends/profile/${userId}`);
+      return res.data;
+    } catch (error) {
+      console.log("Error in getUserProfile:", error.message);
+      return null;
+    }
+  };
+
+  // Fetch notifications on socket (auth) change
+  useEffect(() => {
+    if (!socket) {
+      setNotifications([]);
+      setUnreadNotificationsCount(0);
+      return;
+    }
+    getNotifications();
+  }, [socket]);
+
   return (
     <ChatContext.Provider
       value={{
@@ -189,6 +380,19 @@ export const ChatProvider = ({ children }) => {
         setSelectedUser,
         chatThemes,
         changeChatTheme,
+        markAsRead,
+        notifications,
+        unreadNotificationsCount,
+        getNotifications,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
+        clearNotifications,
+        searchFriends,
+        sendFriendRequest,
+        acceptFriendRequest,
+        declineFriendRequest,
+        unfriend,
+        getUserProfile,
       }}
     >
       {children}
